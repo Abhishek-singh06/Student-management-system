@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Management System - DBMS Project</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ============================================================== -->
+  <!-- 1. LANDING PAGE VIEW (Shown by default or when logged out) -->
+  <!-- ============================================================== -->
+  <div id="viewLanding" class="landing-page">
+    <header class="landing-nav">
+      <div class="landing-brand">
+        <div class="brand-icon">🎓</div>
+        <div>
+          <span class="brand-title">EduManage SMS</span>
+          <span class="brand-subtitle">DBMS Academic Portal</span>
+        </div>
+      </div>
+      <div class="landing-nav-links">
+        <button class="btn btn-secondary btn-sm" onclick="openAuthModal('signin')">Sign In</button>
+        <button class="btn btn-primary btn-sm" onclick="openAuthModal('signup')">Sign Up</button>
+      </div>
+    </header>
+
+    <section class="hero-section">
+      <div class="hero-badge">⚡ DBMS College Project 2026</div>
+      <h1 class="hero-title">Academic Student Management Portal</h1>
+      <p class="hero-subtitle">
+        A full-stack, 3NF-normalized relational database management system designed to track student enrollments, CGPA records, and departmental subjects.
+      </p>
+
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-lg" onclick="enterDirectDemo()">
+          Enter System Dashboard &rarr;
+        </button>
+        <button class="btn btn-secondary btn-lg" onclick="openAuthModal('signin')">
+          Administrator Sign In
+        </button>
+      </div>
+
+      <!-- Feature Highlights -->
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <h3>Student Profiles</h3>
+          <p>Complete student records with unique registration numbers and verified department mapping.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📈</div>
+          <h3>CGPA Tracking</h3>
+          <p>Real-time calculation and visualization of student cumulative grade point averages.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📚</div>
+          <h3>Subject Allocation</h3>
+          <p>Curriculum subject allocations mapped per semester across CSE, ECE, ME, and IT branches.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <h3>LocalStorage & SQLite</h3>
+          <p>Dual persistence layer with local browser storage and relational SQLite database integration.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 2. MAIN APP SHELL (Sidebar + Dashboard/Students) -->
+  <!-- ============================================================== -->
+  <div id="viewApp" class="app-layout" style="display: none;">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-icon">🎓</div>
+          <div>
+            <div class="brand-title">Student MS</div>
+            <div class="brand-subtitle">DBMS College Project</div>
+          </div>
+        </div>
+
+        <ul class="nav-menu">
+          <li>
+            <button class="nav-link active" id="navDashboard" onclick="switchAppTab('dashboard')">
+              <span>📊</span> Dashboard
+            </button>
+          </li>
+          <li>
+            <button class="nav-link" id="navStudents" onclick="switchAppTab('students')">
+              <span>👥</span> Manage Students
+            </button>
+          </li>
+          <li>
+            <button class="nav-link" id="navSqlConsole" onclick="switchAppTab('sql-console')">
+              <span>💻</span> SQL Console
+            </button>
+          </li>
+          <li>
+            <button class="nav-link" id="navSchema" onclick="switchAppTab('schema')">
+              <span>📐</span> Schema & ERD
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="themeToggleBtn" class="btn btn-secondary btn-sm" style="width: 100%; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="toggleDarkMode()">
+          <span id="themeToggleIcon">🌙</span> <span id="themeToggleText">Dark Mode</span>
+        </button>
+
+        <div class="user-profile-badge">
+          <div class="user-avatar" id="sidebarAvatar">A</div>
+          <div style="flex: 1; overflow: hidden;">
+            <div class="user-name" id="sidebarUserName">Administrator</div>
+            <div class="user-role" id="sidebarUserEmail">admin@college.edu</div>
+          </div>
+          <button class="btn-logout" title="Sign Out" onclick="handleSignOut()">🚪</button>
+        </div>
+
+        <div class="db-badge" style="margin-top: 10px;">
+          <span class="db-dot"></span>
+          <span>Storage: <strong>SQLite + LocalStorage</strong></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Global Toast Alert -->
+      <div id="globalAlert" class="alert"></div>
+
+      <!-- ============================================================== -->
+      <!-- TAB 1: DASHBOARD -->
+      <!-- ============================================================== -->
+      <section id="tabDashboard" class="view-section active">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">System Dashboard</h1>
+            <p class="page-subtitle">Summary of registered student enrollments, CGPA rankings, and departments</p>
+          </div>
+          <button class="btn btn-primary" onclick="openAddStudentModal()">
+            <span>+</span> Add Student
+          </button>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-info">
+              <h4>Total Students</h4>
+              <div class="stat-number" id="dashTotalStudents">0</div>
+              <div class="stat-desc">Active database records</div>
+            </div>
+            <div class="stat-icon blue">👥</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <h4>Average CGPA</h4>
+              <div class="stat-number" id="dashAvgCgpa">8.50</div>
+              <div class="stat-desc">Academic Performance</div>
+            </div>
+            <div class="stat-icon green">📈</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <h4>Departments</h4>
+              <div class="stat-number" id="dashTotalDepartments">4</div>
+              <div class="stat-desc">CSE, ECE, ME, IT branches</div>
+            </div>
+            <div class="stat-icon slate">🏛️</div>
+          </div>
+        </div>
+
+        <!-- Recent Students Table -->
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Recently Added Students</h3>
+            <button class="btn btn-secondary btn-sm" onclick="switchAppTab('students')">
+              View All Students &rarr;
+            </button>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Reg Number</th>
+                  <th>Full Name</th>
+                  <th>Department</th>
+                  <th>Year</th>
+                  <th>CGPA</th>
+                  <th>Subjects</th>
+                  <th style="text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="recentStudentsTableBody">
+                <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">Loading students...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- TAB 2: MANAGE STUDENTS -->
+      <!-- ============================================================== -->
+      <section id="tabStudents" class="view-section">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Student Records</h1>
+            <p class="page-subtitle">Search, filter, view, edit, and delete student records with CGPA & subjects</p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="exportStudentsToCSV()" title="Download as CSV">
+              <span>📥</span> Export CSV
+            </button>
+            <button class="btn btn-primary" onclick="openAddStudentModal()">
+              <span>+</span> Add New Student
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Filter Pills -->
+        <div class="quick-pills">
+          <button class="pill-btn active" data-filter="all" onclick="applyQuickFilter('all', this)">All Students</button>
+          <button class="pill-btn" data-filter="top-cgpa" onclick="applyQuickFilter('top-cgpa', this)">⭐ Top CGPA (&ge; 8.5)</button>
+          <button class="pill-btn" data-filter="year-1" onclick="applyQuickFilter('year-1', this)">1st Year</button>
+          <button class="pill-btn" data-filter="year-2" onclick="applyQuickFilter('year-2', this)">2nd Year</button>
+          <button class="pill-btn" data-filter="year-3" onclick="applyQuickFilter('year-3', this)">3rd Year</button>
+          <button class="pill-btn" data-filter="year-4" onclick="applyQuickFilter('year-4', this)">4th Year</button>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="filter-bar">
+          <div class="search-input-group">
+            <span class="search-icon">🔍</span>
+            <input 
+              type="text" 
+              id="searchInput" 
+              class="search-input" 
+              placeholder="Search by student name, reg number, email, or subjects..." 
+              oninput="handleSearchInput()"
+            >
+          </div>
+
+          <select id="deptFilter" class="select-filter" onchange="loadStudents()">
+            <option value="">All Departments</option>
+          </select>
+
+          <select id="sortByFilter" class="select-filter" onchange="loadStudents()">
+            <option value="id_desc">Sort: Newest First</option>
+            <option value="name_asc">Sort: Name (A &rarr; Z)</option>
+            <option value="cgpa_desc">Sort: CGPA (High &rarr; Low)</option>
+            <option value="cgpa_asc">Sort: CGPA (Low &rarr; High)</option>
+            <option value="year_asc">Sort: Year of Study</option>
+          </select>
+
+          <button class="btn btn-secondary btn-sm" onclick="resetFilters()">
+            Reset
+          </button>
+        </div>
+
+        <!-- Students Table -->
+        <div class="table-card">
+          <div class="table-header">
+            <h3>All Students (<span id="studentsCountLabel">0</span>)</h3>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Reg Number</th>
+                  <th>Full Name</th>
+                  <th>Department</th>
+                  <th>Year</th>
+                  <th>CGPA</th>
+                  <th>Subjects</th>
+                  <th>Contact</th>
+                  <th style="text-align: center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 20px;">Loading students...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- TAB 3: SQL CONSOLE (Viva Query Playground) -->
+      <!-- ============================================================== -->
+      <section id="tabSqlConsole" class="view-section">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Interactive SQL Console</h1>
+            <p class="page-subtitle">Execute raw SQL queries against <code>students.db</code> with real-time execution timing in milliseconds</p>
+          </div>
+        </div>
+
+        <div class="sql-console-card">
+          <!-- Category Filter Bar -->
+          <div class="sql-cat-bar">
+            <span class="cat-label">Query Categories:</span>
+            <button class="sql-cat-btn active" onclick="filterSqlPresets('all', this)">All (18)</button>
+            <button class="sql-cat-btn" onclick="filterSqlPresets('joins', this)">🔗 Joins (3)</button>
+            <button class="sql-cat-btn" onclick="filterSqlPresets('aggregates', this)">📊 Aggregations &amp; Grouping (3)</button>
+            <button class="sql-cat-btn" onclick="filterSqlPresets('subqueries', this)">🔍 Subqueries &amp; Sets (4)</button>
+            <button class="sql-cat-btn" onclick="filterSqlPresets('window', this)">📈 Window &amp; CTEs (4)</button>
+            <button class="sql-cat-btn" onclick="filterSqlPresets('patterns', this)">⚡ Expressions &amp; Patterns (4)</button>
+          </div>
+
+          <!-- Preset Query Chips (Clicking any chip loads & executes immediately) -->
+          <div class="sql-preset-bar" id="sqlPresetBar">
+            <!-- Joins -->
+            <button class="preset-chip active" data-cat="joins" data-key="join_inner" onclick="loadSqlPreset('join_inner')">
+              <span>⚡</span> Inner Join (Students + Dept)
+            </button>
+            <button class="preset-chip" data-cat="joins" data-key="join_left" onclick="loadSqlPreset('join_left')">
+              <span>🏛️</span> Left Outer Join (All Depts &amp; Counts)
+            </button>
+            <button class="preset-chip" data-cat="joins" data-key="join_self" onclick="loadSqlPreset('join_self')">
+              <span>👥</span> Self Join (Same Dept Student Pairs)
+            </button>
+
+            <!-- Aggregations -->
+            <button class="preset-chip" data-cat="aggregates" data-key="agg_summary" onclick="loadSqlPreset('agg_summary')">
+              <span>📊</span> Aggregate College Summary (Count, Avg, Min, Max)
+            </button>
+            <button class="preset-chip" data-cat="aggregates" data-key="agg_having" onclick="loadSqlPreset('agg_having')">
+              <span>⭐</span> GROUP BY &amp; HAVING (Avg CGPA &ge; 8.5)
+            </button>
+            <button class="preset-chip" data-cat="aggregates" data-key="agg_year_dept" onclick="loadSqlPreset('agg_year_dept')">
+              <span>📅</span> Multi-Column Group By (Year &amp; Dept)
+            </button>
+
+            <!-- Subqueries & Sets -->
+            <button class="preset-chip" data-cat="subqueries" data-key="subquery_above_avg" onclick="loadSqlPreset('subquery_above_avg')">
+              <span>🔍</span> Scalar Subquery (Above Avg CGPA)
+            </button>
+            <button class="preset-chip" data-cat="subqueries" data-key="subquery_correlated" onclick="loadSqlPreset('subquery_correlated')">
+              <span>🎯</span> Correlated Subquery (Department Toppers)
+            </button>
+            <button class="preset-chip" data-cat="subqueries" data-key="subquery_in" onclick="loadSqlPreset('subquery_in')">
+              <span>📥</span> IN Subquery (&ge; 2 Students Enrolled)
+            </button>
+            <button class="preset-chip" data-cat="subqueries" data-key="subquery_exists" onclick="loadSqlPreset('subquery_exists')">
+              <span>✅</span> EXISTS Clause (Active Enrolled Depts)
+            </button>
+
+            <!-- Window Functions & CTEs -->
+            <button class="preset-chip" data-cat="window" data-key="window_rank_dept" onclick="loadSqlPreset('window_rank_dept')">
+              <span>🏆</span> Window Function: DENSE_RANK()
+            </button>
+            <button class="preset-chip" data-cat="window" data-key="window_overall" onclick="loadSqlPreset('window_overall')">
+              <span>🎖️</span> Window Function: Merit ROW_NUMBER()
+            </button>
+            <button class="preset-chip" data-cat="window" data-key="window_lead_lag" onclick="loadSqlPreset('window_lead_lag')">
+              <span>📈</span> Window LAG() (CGPA Gap Analysis)
+            </button>
+            <button class="preset-chip" data-cat="window" data-key="complex_cte" onclick="loadSqlPreset('complex_cte')">
+              <span>🧬</span> WITH CTE (Common Table Expression)
+            </button>
+
+            <!-- Expressions & Patterns -->
+            <button class="preset-chip" data-cat="patterns" data-key="expr_honors" onclick="loadSqlPreset('expr_honors')">
+              <span>📜</span> CASE Statement: Degree Divisions
+            </button>
+            <button class="preset-chip" data-cat="patterns" data-key="pattern_filter" onclick="loadSqlPreset('pattern_filter')">
+              <span>🔎</span> Pattern Matching: LIKE Wildcards
+            </button>
+            <button class="preset-chip" data-cat="patterns" data-key="expr_coalesce" onclick="loadSqlPreset('expr_coalesce')">
+              <span>🏷️</span> COALESCE &amp; SUBSTR (Batch Year Extraction)
+            </button>
+            <button class="preset-chip" data-cat="patterns" data-key="subquery_not_exists" onclick="loadSqlPreset('subquery_not_exists')">
+              <span>⭕</span> NOT EXISTS (Zero Enrollment Check)
+            </button>
+          </div>
+
+          <textarea id="sqlQueryInput" class="sql-editor" spellcheck="false" placeholder="-- Type or choose a preset query from above...
+SELECT s.registration_number, s.full_name, d.name AS department, s.cgpa
+FROM students s
+INNER JOIN departments d ON s.department_id = d.id
+ORDER BY s.cgpa DESC;"></textarea>
+
+          <div class="sql-actions-bar">
+            <div class="sql-meta-info" id="sqlMetaInfo">Loaded preset: Inner Join (Students + Department) — Executing on SQLite...</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn btn-secondary btn-sm" id="autoRunToggleBtn" onclick="toggleAutoRunPresets()" title="Toggle whether clicking presets executes them immediately">
+                <span>⚡</span> Instant Run: ON
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="clearSqlQuery()">Clear Editor</button>
+              <button class="btn btn-primary btn-sm" id="btnRunSql" onclick="executeSqlQuery()">
+                <span>⚡</span> Execute Query (Ctrl+Enter)
+              </button>
+            </div>
+          </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Query Output Results (<span id="sqlRowCount">0 rows</span>)</h3>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="data-table" id="sqlResultsTable">
+              <thead id="sqlResultsHead">
+                <tr><th>Message</th></tr>
+              </thead>
+              <tbody id="sqlResultsBody">
+                <tr><td style="color: var(--text-muted); padding: 20px; text-align: center;">Execute an SQL query to inspect results here.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- TAB 4: DATABASE SCHEMA & ERD VIEWER -->
+      <!-- ============================================================== -->
+      <section id="tabSchema" class="view-section">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Relational Database Schema &amp; ERD Architecture</h1>
+            <p class="page-subtitle">3NF-normalized tables, primary keys, foreign key constraints, and relational mappings</p>
+          </div>
+          <div>
+            <button class="btn btn-secondary" onclick="loadLiveSchemaMetadata()">
+              <span>🔄</span> Refresh Live PRAGMA
+            </button>
+            <button class="btn btn-primary" onclick="copySqlDdl()" style="margin-left: 8px;">
+              <span>📋</span> Copy SQL DDL
+            </button>
+          </div>
+        </div>
+
+        <!-- Schema Metrics Ribbon -->
+        <div class="schema-metrics-bar">
+          <div class="metric-item">
+            <span class="metric-val">2</span>
+            <span class="metric-lbl">Relational Tables</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-val">11</span>
+            <span class="metric-lbl">Total Attributes</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-val">2</span>
+            <span class="metric-lbl">Primary Keys (Auto)</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-val">1</span>
+            <span class="metric-lbl">Foreign Key Constraint</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-val">2</span>
+            <span class="metric-lbl">Domain CHECK Rules</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-val" style="color: #10b981;">3NF</span>
+            <span class="metric-lbl">Normalization Level</span>
+          </div>
+        </div>
+
+        <!-- Visual Entity Relationship Diagram (ERD) -->
+        <div class="erd-visual-container">
+          <div class="erd-diagram-header">
+            <h3>📐 Visual Entity Relationship Diagram (Crow's Foot Notation)</h3>
+            <span class="erd-rel-pill">Relationship: 1 : N (One-to-Many)</span>
+          </div>
+
+          <div class="erd-cards-flow">
+            <!-- Entity: Departments -->
+            <div class="erd-card parent-card">
+              <div class="erd-card-header">
+                <div>
+                  <h3>🏛️ departments</h3>
+                  <span class="erd-role-tag">Parent Entity (1)</span>
+                </div>
+                <span class="table-badge">Table</span>
+              </div>
+              <ul class="erd-field-list">
+                <li class="erd-field-item">
+                  <span class="erd-field-name">
+                    <span class="badge-pk">PK</span> id
+                  </span>
+                  <span class="erd-field-type">INTEGER AUTOINCREMENT</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">
+                    <span class="badge-uk">UK</span> name
+                  </span>
+                  <span class="erd-field-type">TEXT NOT NULL UNIQUE</span>
+                </li>
+              </ul>
+              <div class="erd-card-footer">
+                Primary entity holding departmental names without duplication.
+              </div>
+            </div>
+
+            <!-- Visual Relationship Connector Bridge -->
+            <div class="erd-connector-bridge">
+              <div class="conn-symbol-left">1</div>
+              <div class="conn-line-container">
+                <div class="conn-badge">Enrolls Students</div>
+                <div class="conn-line"></div>
+                <div class="conn-rules">
+                  <span>ON DELETE SET NULL</span>
+                  <span>PRAGMA foreign_keys = ON</span>
+                </div>
+              </div>
+              <div class="conn-symbol-right">&infin; / N</div>
+            </div>
+
+            <!-- Entity: Students -->
+            <div class="erd-card child-card">
+              <div class="erd-card-header">
+                <div>
+                  <h3>🎓 students</h3>
+                  <span class="erd-role-tag">Child Entity (N)</span>
+                </div>
+                <span class="table-badge">Table</span>
+              </div>
+              <ul class="erd-field-list">
+                <li class="erd-field-item">
+                  <span class="erd-field-name">
+                    <span class="badge-pk">PK</span> id
+                  </span>
+                  <span class="erd-field-type">INTEGER AUTOINCREMENT</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">
+                    <span class="badge-uk">UK</span> registration_number
+                  </span>
+                  <span class="erd-field-type">TEXT NOT NULL UNIQUE</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">full_name</span>
+                  <span class="erd-field-type">TEXT NOT NULL</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">
+                    <span class="badge-uk">UK</span> email
+                  </span>
+                  <span class="erd-field-type">TEXT UNIQUE</span>
+                </li>
+                <li class="erd-field-item highlighted">
+                  <span class="erd-field-name">
+                    <span class="badge-fk">FK</span> department_id
+                  </span>
+                  <span class="erd-field-type">INTEGER &rarr; departments(id)</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">
+                    <span class="badge-check">CHK</span> year_of_study
+                  </span>
+                  <span class="erd-field-type">INTEGER CHECK(1..4)</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">
+                    <span class="badge-check">CHK</span> cgpa
+                  </span>
+                  <span class="erd-field-type">REAL CHECK(0.00..10.00)</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">subjects</span>
+                  <span class="erd-field-type">TEXT</span>
+                </li>
+                <li class="erd-field-item">
+                  <span class="erd-field-name">phone_number</span>
+                  <span class="erd-field-type">TEXT</span>
+                </li>
+              </ul>
+              <div class="erd-card-footer">
+                Stores student records linked to parent department via <code>department_id</code>.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Normalization Verification Section (3NF Proof) -->
+        <div class="normalization-section">
+          <div class="section-subheading">
+            <h3>🔬 Normalization Verification &amp; Relational Proof</h3>
+            <p>Mathematical and theoretical confirmation that this schema conforms to Third Normal Form (3NF)</p>
+          </div>
+
+          <div class="norm-grid">
+            <div class="norm-card">
+              <div class="norm-header">
+                <span class="norm-badge">1NF</span>
+                <h4>First Normal Form (Atomicity)</h4>
+              </div>
+              <p>All column values are <strong>atomic</strong> (indivisible scalars). Every record has a unique row identifier (surrogate primary key <code>id</code>), eliminating repeating groups.</p>
+              <div class="norm-proof">✅ Satisfied: Atomic scalar types, discrete rows, unique candidate keys.</div>
+            </div>
+
+            <div class="norm-card">
+              <div class="norm-header">
+                <span class="norm-badge">2NF</span>
+                <h4>Second Normal Form (No Partial Dependency)</h4>
+              </div>
+              <p>Database is in 1NF and contains <strong>no partial dependencies</strong>: all non-key attributes depend fully on the primary key. Since primary keys are single-column integer IDs, partial key dependency cannot exist.</p>
+              <div class="norm-proof">✅ Satisfied: Every non-prime attribute depends on the full primary key.</div>
+            </div>
+
+            <div class="norm-card">
+              <div class="norm-header">
+                <span class="norm-badge">3NF</span>
+                <h4>Third Normal Form (No Transitive Dependency)</h4>
+              </div>
+              <p>Database is in 2NF and contains <strong>no transitive dependencies</strong> (<code>X &rarr; Y &rarr; Z</code>). Department details (<code>name</code>) are isolated into <code>departments</code>, preventing student records from repeating branch descriptions.</p>
+              <div class="norm-proof">✅ Satisfied: Transitive anomalies eliminated via foreign key relationship.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DDL (Data Definition Language) Script Box -->
+        <div class="ddl-box">
+          <div class="ddl-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.1rem;">💻</span>
+              <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700;">SQLite DDL Schema Definition (Executable SQL)</h4>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="copySqlDdl()">
+              <span>📋</span> Copy DDL
+            </button>
+          </div>
+          <pre class="ddl-code"><code>-- Enforce Referential Integrity in SQLite (Strict FK validation)
+PRAGMA foreign_keys = ON;
+
+-- 1. Departments Table (Parent Entity)
+CREATE TABLE IF NOT EXISTS departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL
+);
+
+-- 2. Students Table (Child Entity)
+CREATE TABLE IF NOT EXISTS students (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    registration_number TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    department_id INTEGER,
+    year_of_study INTEGER CHECK (year_of_study BETWEEN 1 AND 4),
+    cgpa REAL CHECK (cgpa >= 0.0 AND cgpa <= 10.0),
+    subjects TEXT,
+    phone_number TEXT,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+);
+
+-- Index for optimizing Foreign Key Lookups & Joins
+CREATE INDEX IF NOT EXISTS idx_students_dept ON students(department_id);</code></pre>
+        </div>
+
+        <!-- Live PRAGMA Schema Inspector Output -->
+        <div class="table-card" style="margin-top: 24px;">
+          <div class="table-header">
+            <h3>Live SQLite PRAGMA Metadata Inspection (From Server Engine)</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadLiveSchemaMetadata()">Refresh Inspector</button>
+          </div>
+          <div id="liveSchemaOutput" style="padding: 18px;">
+            <div style="text-align: center; color: var(--text-muted); padding: 16px;">
+              Click "Refresh Live PRAGMA" or switch tabs to inspect live database table metadata.
+            </div>
+          </div>
+        </div>
+
+        <!-- Viva Guide Box (Expanded 6-Card Academic Grid) -->
+        <div class="viva-section">
+          <div class="section-subheading">
+            <h3>🎓 DBMS College Viva &amp; Review Defense Cheatsheet</h3>
+            <p>Essential theoretical and implementation questions commonly asked by professors during database project vivas</p>
+          </div>
+
+          <div class="viva-grid">
+            <div class="viva-card">
+              <div class="viva-q">1. Why SQLite instead of MySQL or PostgreSQL?</div>
+              <div class="viva-a">
+                SQLite is a self-contained, serverless, zero-configuration, ACID-compliant transactional SQL database engine. The entire database resides in a single cross-platform disk file (<code>students.db</code>), eliminating network socket overhead and administrative server setup for a standalone academic application.
+              </div>
+            </div>
+
+            <div class="viva-card">
+              <div class="viva-q">2. Why use a Surrogate Key (id) alongside Natural Key (registration_number)?</div>
+              <div class="viva-a">
+                The surrogate integer primary key (<code>id</code>) provides high-performance fixed-width indexing and stable foreign key references. The natural key (<code>registration_number</code>) is enforced via a <code>UNIQUE NOT NULL</code> constraint to guarantee domain-level real-world uniqueness without making foreign keys bulky text strings.
+              </div>
+            </div>
+
+            <div class="viva-card">
+              <div class="viva-q">3. How is Referential Integrity enforced in this project?</div>
+              <div class="viva-a">
+                By default, SQLite maintains foreign key compatibility with legacy databases by disabling checks. Our backend explicitly runs <code>PRAGMA foreign_keys = ON;</code> on every database connection. The constraint <code>ON DELETE SET NULL</code> ensures that if a department is deleted, enrolled students remain in the database with department set to NULL rather than orphaned or accidentally wiped.
+              </div>
+            </div>
+
+            <div class="viva-card">
+              <div class="viva-q">4. How does the application defend against SQL Injection?</div>
+              <div class="viva-a">
+                All backend queries in <code>app.py</code> utilize <strong>parameterized queries</strong> (<code>?</code> placeholders) via the Python <code>sqlite3</code> driver. Input parameters are transmitted separately from the SQL statement logic, preventing malicious SQL payloads from escaping input strings.
+              </div>
+            </div>
+
+            <div class="viva-card">
+              <div class="viva-q">5. How does this system uphold ACID Properties?</div>
+              <div class="viva-a">
+                <strong>Atomicity:</strong> Transactions commit completely or roll back on error.  
+                <strong>Consistency:</strong> Schema constraints (CHECK, UNIQUE, FK) are validated before commit.  
+                <strong>Isolation:</strong> SQLite uses write-ahead logging (WAL) or serialized locking.  
+                <strong>Durability:</strong> Once committed, changes are flushed to disk in <code>students.db</code>.
+              </div>
+            </div>
+
+            <div class="viva-card">
+              <div class="viva-q">6. What is the role of CHECK and Domain Constraints?</div>
+              <div class="viva-a">
+                Domain constraints like <code>CHECK (year_of_study BETWEEN 1 AND 4)</code> and <code>CHECK (cgpa BETWEEN 0.0 AND 10.0)</code> enforce business rules directly at the relational storage layer, guaranteeing database validity regardless of which application client executes the write operation.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 1: AUTHENTICATION (SIGN IN & SIGN UP) -->
+  <!-- ============================================================== -->
+  <div id="authModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="authModalTitle">Sign In</h3>
+        <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+      </div>
+
+      <!-- Auth Tab Toggle -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabBtnSignIn" onclick="toggleAuthForm('signin')">Sign In</button>
+        <button class="auth-tab" id="tabBtnSignUp" onclick="toggleAuthForm('signup')">Sign Up</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="authErrorAlert" class="alert alert-error" style="margin-bottom: 14px;"></div>
+
+        <!-- SIGN IN FORM -->
+        <form id="signInForm" onsubmit="handleSignInSubmit(event)">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Username or Email</label>
+            <input type="text" id="loginUsername" class="form-control" placeholder="admin" value="admin" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label>Password</label>
+            <input type="password" id="loginPassword" class="form-control" placeholder="password123" value="password123" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+          
+          <div style="margin-top: 14px; padding: 10px; background: #f8fafc; border-radius: 6px; font-size: 0.8rem; color: #64748b; text-align: center;">
+            Demo Credentials: <strong>admin</strong> / <strong>password123</strong>
+          </div>
+        </form>
+
+        <!-- SIGN UP FORM -->
+        <form id="signUpForm" onsubmit="handleSignUpSubmit(event)" style="display: none;">
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Full Name *</label>
+            <input type="text" id="regFullName" class="form-control" placeholder="Prof. Sharma" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Email Address *</label>
+            <input type="email" id="regEmail" class="form-control" placeholder="sharma@college.edu" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>Username *</label>
+            <input type="text" id="regUsername" class="form-control" placeholder="sharma" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label>Password *</label>
+            <input type="password" id="regPassword" class="form-control" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 2: ADD / EDIT STUDENT (With CGPA & Subjects) -->
+  <!-- ============================================================== -->
+  <div id="studentFormModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="formModalTitle">Add New Student</h3>
+        <button class="modal-close" onclick="closeStudentFormModal()">&times;</button>
+      </div>
+      <form id="studentForm" onsubmit="handleStudentFormSubmit(event)">
+        <div class="modal-body">
+          <div id="formErrorAlert" class="alert alert-error" style="margin-bottom: 14px;"></div>
+          <input type="hidden" id="studentIdField" value="">
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="regNumberField">Registration Number *</label>
+              <input type="text" id="regNumberField" class="form-control" placeholder="e.g. 2024CSE01" required>
+            </div>
+
+            <div class="form-group">
+              <label for="fullNameField">Full Name *</label>
+              <input type="text" id="fullNameField" class="form-control" placeholder="e.g. Ramesh Kumar" required>
+            </div>
+
+            <div class="form-group">
+              <label for="departmentField">Department *</label>
+              <select id="departmentField" class="form-control" required>
+                <option value="">Select Department</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="yearOfStudyField">Year of Study *</label>
+              <select id="yearOfStudyField" class="form-control" required>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+              </select>
+            </div>
+
+            <!-- NEW FIELD: CGPA -->
+            <div class="form-group">
+              <label for="cgpaField">CGPA (0.00 - 10.00) *</label>
+              <input type="number" step="0.01" min="0" max="10" id="cgpaField" class="form-control" placeholder="e.g. 8.75" required>
+            </div>
+
+            <div class="form-group">
+              <label for="phoneField">Phone Number</label>
+              <input type="text" id="phoneField" class="form-control" placeholder="e.g. 9876543210">
+            </div>
+
+            <div class="form-group full-width">
+              <label for="emailField">Email Address</label>
+              <input type="email" id="emailField" class="form-control" placeholder="e.g. ramesh@college.edu">
+            </div>
+
+            <!-- NEW FIELD: Subjects -->
+            <div class="form-group full-width">
+              <label for="subjectsField">Enrolled Subjects *</label>
+              <input type="text" id="subjectsField" class="form-control" placeholder="e.g. DBMS, Operating Systems, Computer Networks" required>
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Enter comma-separated course subjects</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeStudentFormModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveStudentBtn">Save Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 3: VIEW STUDENT DETAILS -->
+  <!-- ============================================================== -->
+  <div id="studentDetailsModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Student Record Details</h3>
+        <button class="modal-close" onclick="closeStudentDetailsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="background-color: var(--primary-light); padding: 16px; border-radius: 6px; margin-bottom: 20px;">
+          <h4 id="detailFullName" style="font-size: 1.25rem; font-weight: 700; color: #1e3a8a;">—</h4>
+          <p id="detailRegNumber" style="font-size: 0.9rem; font-weight: 600; color: #2563eb; margin-top: 4px;">—</p>
+        </div>
+
+        <div class="details-grid">
+          <div class="detail-item">
+            <h5>Database ID (PK)</h5>
+            <p id="detailId">—</p>
+          </div>
+          <div class="detail-item">
+            <h5>Year of Study</h5>
+            <p id="detailYear">—</p>
+          </div>
+          <div class="detail-item">
+            <h5>Department (FK)</h5>
+            <p id="detailDept">—</p>
+          </div>
+          <div class="detail-item">
+            <h5>Academic CGPA</h5>
+            <p id="detailCgpa" style="font-weight: 700; color: var(--success);">—</p>
+          </div>
+          <div class="detail-item">
+            <h5>Email Address</h5>
+            <p id="detailEmail">—</p>
+          </div>
+          <div class="detail-item">
+            <h5>Phone Number</h5>
+            <p id="detailPhone">—</p>
+          </div>
+          <div class="detail-item" style="grid-column: 1 / -1;">
+            <h5>Enrolled Subjects</h5>
+            <p id="detailSubjects" style="color: #1e293b; font-weight: 500;">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between;">
+        <button type="button" class="btn btn-secondary" onclick="printStudentGradeCard()">🖨️ Print Grade Card</button>
+        <button type="button" class="btn btn-primary" onclick="closeStudentDetailsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 4: CONFIRM DELETE -->
+  <!-- ============================================================== -->
+  <div id="deleteConfirmModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 style="color: var(--danger);">Confirm Deletion</h3>
+        <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.95rem; color: #334155; line-height: 1.5;">
+          Are you sure you want to permanently delete student <strong id="deleteTargetName"></strong> (<span id="deleteTargetReg"></span>)?
+        </p>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;">
+          This record will be immediately removed from the SQLite database and local storage.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="executeDelete()">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vanilla JS Engine -->
+  <script src="/static/script.js"></script>
+</body>
+</html>
